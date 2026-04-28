@@ -1,5 +1,6 @@
 """Django settings for test-oplati project."""
 
+import os
 from pathlib import Path
 
 import environ
@@ -8,7 +9,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DEBUG=(bool, False),
-    ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
 )
 
 environ.Env.read_env(BASE_DIR / ".env")
@@ -17,7 +17,19 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production"
 
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS: list[str] = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# === ИСПРАВЛЕНО: жёстко прописанные домены + чтение из переменной ===
+ALLOWED_HOSTS = [
+    "test-octal-encoder.com",
+    "test-octal.encoder.com",
+    "*.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
+
+# Если в Render задана переменная ALLOWED_HOSTS — добавить и её
+extra_hosts = env.str("ALLOWED_HOSTS", default="")
+if extra_hosts:
+    ALLOWED_HOSTS += [h.strip() for h in extra_hosts.split(",") if h.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
