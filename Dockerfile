@@ -6,6 +6,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
+
 FROM python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -26,6 +27,8 @@ COPY apps ./apps
 COPY templates ./templates
 COPY static ./static
 
+RUN mkdir -p /app/staticfiles
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py seed_data && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
