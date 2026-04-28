@@ -15,14 +15,18 @@ from apps.products.models import Currency, Item
 def test_checkout_success_page(client: Client) -> None:
     resp = client.get("/checkout/success/")
     assert resp.status_code == 200
-    assert "Thank you" in resp.content.decode()
+    body = resp.content.decode()
+    assert "Спасибо за покупку" in body
+    assert "Оплата прошла успешно" in body
 
 
 @pytest.mark.django_db
 def test_checkout_cancel_page(client: Client) -> None:
     resp = client.get("/checkout/cancel/")
     assert resp.status_code == 200
-    assert "Cancelled" in resp.content.decode()
+    body = resp.content.decode()
+    assert "Оплата отменена" in body
+    assert "попробовать снова" in body
 
 
 @pytest.mark.django_db

@@ -25,6 +25,35 @@ def _stripe_currency_code(currency: str) -> str:
     return currency.strip().upper()[:3].lower()
 
 
+def _unit_amount_for_stripe_item(item: Item) -> int:
+    """
+    Amount in smallest currency unit sent to Stripe.
+
+    Stripe USD charges require at least 50 cents. If ``price`` looks like whole dollars
+    (integer < 50), we assume admin entered dollars and convert to cents (*100).
+    Otherwise ``price`` is treated as already in cents.
+    """
+    cur_code = _stripe_currency_code(item.currency)
+    amount = int(item.price)
+    if cur_code == "usd":
+        if amount < 50:
+            dollars = amount
+            amount = dollars * 100
+            logger.info(
+                "USD item_pk=%s: price=%s treated as whole dollars → %s cents",
+                item.pk,
+                dollars,
+                amount,
+            )
+        if amount < 50:
+            logger.warning(
+                "USD unit_amount=%s still below 50 cents (Stripe minimum) item_pk=%s",
+                amount,
+                item.pk,
+            )
+    return amount
+
+
 def get_secret_key_for_currency(currency: str) -> str:
     cur = currency.upper()
     if cur == Currency.USD:
@@ -117,25 +146,21 @@ def build_success_cancel_urls() -> tuple[str, str]:
 
 
 def create_checkout_session_for_item(item: Item) -> stripe.checkout.Session:
-    success_url, cancel_url = build_success_cancel_urls()
-    opts = _stripe_request_options(item.currency)
     cur_code = _stripe_currency_code(item.currency)
-    secret = opts.get("api_key", "")
-    logger.info(
-        "Checkout Session item_pk=%s stripe_cur=%s model_cur=%s key_suffix=%s",
-        item.pk,
-        cur_code,
-        item.currency,
-        _mask_secret_suffix(secret),
-    )
-    desc = (item.description or "")[:500]
-    if cur_code == "usd" and item.price < 50:
-        logger.warning(
-            "Stripe USD Checkout usually requires at least 50 (cents); unit_amount=%s item_pk=%s",
-            item.price,
-            item.pk,
-        )
     try:
+        success_url, cancel_url = build_success_cancel_urls()
+        opts = _stripe_request_options(item.currency)
+        secret = opts.get("api_key", "")
+        unit_amount = _unit_amount_for_stripe_item(item)
+        logger.info(
+            "Checkout Session item_pk=%s stripe_cur=%s model_cur=%s unit_amount=%s key_suffix=%s",
+            item.pk,
+            cur_code,
+            item.currency,
+            unit_amount,
+            _mask_secret_suffix(secret),
+        )
+        desc = (item.description or "")[:500]
         session = stripe.checkout.Session.create(
             mode="payment",
             line_items=[
@@ -143,7 +168,7 @@ def create_checkout_session_for_item(item: Item) -> stripe.checkout.Session:
                     "price_data": {
                         "currency": cur_code,
                         "product_data": {"name": item.name, "description": desc},
-                        "unit_amount": item.price,
+                        "unit_amount": unit_amount,
                     },
                     "quantity": 1,
                 }
@@ -160,6 +185,13 @@ def create_checkout_session_for_item(item: Item) -> stripe.checkout.Session:
             cur_code,
             getattr(exc, "http_status", None),
             getattr(exc, "user_message", None) or str(exc),
+        )
+        raise
+    except Exception:
+        logger.exception(
+            "Unexpected error creating Checkout Session item_pk=%s currency=%s",
+            item.pk,
+            getattr(item, "currency", None),
         )
         raise
     logger.info(
@@ -190,6 +222,7 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
     line_items: list[dict[str, Any]] = []
     for oi in order.order_items.select_related("item").all():
         desc = (oi.item.description or "")[:500]
+        line_amt = _unit_amount_for_stripe_item(oi.item)
         li: dict[str, Any] = {
             "price_data": {
                 "currency": _stripe_currency_code(oi.item.currency),
@@ -197,7 +230,7 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
                     "name": oi.item.name,
                     "description": desc,
                 },
-                "unit_amount": oi.item.price,
+                "unit_amount": line_amt,
             },
             "quantity": oi.quantity,
         }
@@ -229,6 +262,9 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
             getattr(exc, "user_message", None) or str(exc),
         )
         raise
+    except Exception:
+        logger.exception("Unexpected error creating Checkout Session for order_pk=%s", order.pk)
+        raise
     logger.info("Checkout Session created order_pk=%s session_id=%s", order.pk, session.id)
     return session
 
@@ -236,15 +272,17 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
 def create_payment_intent_for_item(item: Item) -> stripe.PaymentIntent:
     opts = _stripe_request_options(item.currency)
     cur_code = _stripe_currency_code(item.currency)
+    amount_cents = _unit_amount_for_stripe_item(item)
     logger.info(
-        "Creating PaymentIntent item_pk=%s currency=%s secret_suffix=%s",
+        "Creating PaymentIntent item_pk=%s currency=%s amount=%s secret_suffix=%s",
         item.pk,
         cur_code,
+        amount_cents,
         _mask_secret_suffix(opts.get("api_key", "")),
     )
     try:
         intent = stripe.PaymentIntent.create(
-            amount=item.price,
+            amount=amount_cents,
             currency=cur_code,
             metadata={"item_id": str(item.pk)},
             automatic_payment_methods={"enabled": True},
@@ -258,6 +296,9 @@ def create_payment_intent_for_item(item: Item) -> stripe.PaymentIntent:
             getattr(exc, "http_status", None),
             getattr(exc, "user_message", None) or str(exc),
         )
+        raise
+    except Exception:
+        logger.exception("Unexpected error creating PaymentIntent item_pk=%s", item.pk)
         raise
     intent_id = getattr(intent, "id", "")
     logger.info("PaymentIntent created item_pk=%s intent=%s", item.pk, intent_id)

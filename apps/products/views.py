@@ -161,10 +161,9 @@ def create_order(request: HttpRequest) -> JsonResponse:
 
 @require_GET
 def checkout_success(request: HttpRequest) -> HttpResponse:
-    return HttpResponse("<h1>Thank you</h1><p>Payment completed.</p>", content_type="text/html")
+    return render(request, "products/checkout_success.html")
 
 
 @require_GET
 def checkout_cancel(request: HttpRequest) -> HttpResponse:
-    body = "<h1>Cancelled</h1><p>You can close this tab.</p>"
-    return HttpResponse(body, content_type="text/html")
+    return render(request, "products/checkout_cancel.html")

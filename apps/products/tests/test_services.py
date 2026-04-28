@@ -9,12 +9,48 @@ import pytest
 
 from apps.products.models import Currency, Discount, Item, Order, OrderItem, Tax
 from apps.products.services import (
+    create_checkout_session_for_item,
     create_checkout_session_for_order,
     ensure_stripe_coupon,
     ensure_stripe_tax_rate,
     get_publishable_key_for_currency,
     get_secret_key_for_currency,
 )
+
+
+@pytest.mark.django_db
+def test_usd_price_below_50_interpreted_as_whole_dollars(settings: object) -> None:
+    settings.STRIPE_SECRET_KEY_USD = "sk_test_usd"
+    settings.SITE_URL = "http://testserver"
+    item = Item.objects.create(
+        name="USD dozen dollars stored as 12",
+        description="",
+        price=12,
+        currency=Currency.USD,
+    )
+    fake = SimpleNamespace(id="cs_usd_1")
+    with patch("stripe.checkout.Session.create", return_value=fake) as m:
+        create_checkout_session_for_item(item)
+    pd = m.call_args.kwargs["line_items"][0]["price_data"]
+    assert pd["currency"] == "usd"
+    assert pd["unit_amount"] == 1200
+
+
+@pytest.mark.django_db
+def test_usd_price_already_cents_not_scaled(settings: object) -> None:
+    settings.STRIPE_SECRET_KEY_USD = "sk_test_usd"
+    settings.SITE_URL = "http://testserver"
+    item = Item.objects.create(
+        name="USD cents",
+        description="",
+        price=999,
+        currency=Currency.USD,
+    )
+    fake = SimpleNamespace(id="cs_usd_2")
+    with patch("stripe.checkout.Session.create", return_value=fake) as m:
+        create_checkout_session_for_item(item)
+    pd = m.call_args.kwargs["line_items"][0]["price_data"]
+    assert pd["unit_amount"] == 999
 
 
 def test_get_secret_and_publishable_keys(settings: object) -> None:
