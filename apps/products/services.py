@@ -40,6 +40,11 @@ def get_publishable_key_for_currency(currency: str) -> str:
     return pk
 
 
+def get_publishable_key(currency: str) -> str:
+    """Alias for views/templates expecting `get_publishable_key(currency)`."""
+    return get_publishable_key_for_currency(currency)
+
+
 def _stripe_request_options(currency: str) -> dict[str, Any]:
     return {"api_key": get_secret_key_for_currency(currency)}
 

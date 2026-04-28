@@ -27,6 +27,10 @@ class Item(models.Model):
     class Meta:
         ordering = ["pk"]
 
+    def get_price_display(self) -> float:
+        """Convert minor units (cents/kopecks) to major units for display."""
+        return self.price / 100
+
     def __str__(self) -> str:
         return f"{self.name} ({self.currency})"
 

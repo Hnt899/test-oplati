@@ -6,10 +6,9 @@ import json
 import logging
 from typing import Any
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
@@ -19,7 +18,7 @@ from apps.products.services import (
     create_checkout_session_for_item,
     create_checkout_session_for_order,
     create_payment_intent_for_item,
-    get_publishable_key_for_currency,
+    get_publishable_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,15 +30,18 @@ def _json_error(message: str, status: int = 400) -> JsonResponse:
 
 @require_GET
 def item_page(request: HttpRequest, pk: int) -> HttpResponse:
-    item = get_object_or_404(Item, pk=pk)
-    publishable = get_publishable_key_for_currency(item.currency)
+    try:
+        item = Item.objects.get(pk=pk)
+    except Item.DoesNotExist:
+        raise Http404("Item not found") from None
+
+    publishable_key = get_publishable_key(item.currency)
     return render(
         request,
         "products/item.html",
         {
             "item": item,
-            "stripe_publishable_key": publishable,
-            "debug": settings.DEBUG,
+            "stripe_publishable_key": publishable_key,
         },
     )
 

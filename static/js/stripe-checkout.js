@@ -1,51 +1,40 @@
-(function () {
-  "use strict";
+document.addEventListener('DOMContentLoaded', function() {
+    const buyButton = document.getElementById('buy-button');
 
-  function ready(fn) {
-    if (document.readyState !== "loading") {
-      fn();
-    } else {
-      document.addEventListener("DOMContentLoaded", fn);
-    }
-  }
-
-  ready(function () {
-    var cfg = window.OPLATI_CONFIG;
-    if (!cfg || !cfg.publishableKey || !cfg.itemId) {
-      return;
+    if (!buyButton) {
+        console.error('Buy button not found');
+        return;
     }
 
-    var stripe = Stripe(cfg.publishableKey);
-    var btn = document.getElementById("buy-btn");
-    var errEl = document.getElementById("buy-error");
+    buyButton.addEventListener('click', function() {
+        const itemId = buyButton.getAttribute('data-item-id');
+        const stripePublicKey = buyButton.getAttribute('data-stripe-key');
 
-    if (!btn) {
-      return;
-    }
+        if (!itemId || !stripePublicKey) {
+            console.error('Missing data-item-id or data-stripe-key on button');
+            return;
+        }
 
-    btn.addEventListener("click", function () {
-      errEl.classList.add("d-none");
-      btn.disabled = true;
-      fetch("/buy/" + cfg.itemId + "/", { method: "GET", credentials: "same-origin" })
-        .then(function (res) {
-          if (!res.ok) {
-            throw new Error("Checkout failed");
-          }
-          return res.json();
-        })
-        .then(function (data) {
-          return stripe.redirectToCheckout({ sessionId: data.session_id });
-        })
-        .then(function (result) {
-          if (result.error) {
-            throw new Error(result.error.message);
-          }
-        })
-        .catch(function (e) {
-          errEl.textContent = e.message || "Unable to start checkout.";
-          errEl.classList.remove("d-none");
-          btn.disabled = false;
-        });
+        const stripe = Stripe(stripePublicKey);
+
+        fetch('/buy/' + itemId + '/')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server returned ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.session_id) {
+                    return stripe.redirectToCheckout({ sessionId: data.session_id });
+                } else {
+                    console.error('No session_id in response:', data);
+                    alert('Error: no session_id');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Something went wrong: ' + error.message);
+            });
     });
-  });
-})();
+});

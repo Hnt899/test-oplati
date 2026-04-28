@@ -19,7 +19,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache --no-index --find-links=/wheels/ -r /wheels/requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache --no-index --find-links=/wheels -r requirements.txt
 
 COPY manage.py pyproject.toml ./
 COPY config ./config
@@ -31,4 +32,4 @@ RUN mkdir -p /app/staticfiles
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py seed_data && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py seed_data && echo 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username=\"admin\").exists() or User.objects.create_superuser(\"admin\", \"admin@example.com\", \"qwerty123\")' | python manage.py shell && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
