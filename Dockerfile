@@ -18,7 +18,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache /wheels/*
+RUN pip install --no-cache --no-index --find-links=/wheels/ -r /wheels/requirements.txt
 
 COPY manage.py pyproject.toml ./
 COPY config ./config
