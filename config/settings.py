@@ -17,12 +17,7 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production"
 
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = [
-    "test-opt1i.onrender.com",
-    "*.onrender.com",
-    "localhost",
-    "127.0.0.1",
-]
+ALLOWED_HOSTS = ["*"]
 
 # Если в Render задана переменная ALLOWED_HOSTS — добавить и её
 extra_hosts = env.str("ALLOWED_HOSTS", default="")
