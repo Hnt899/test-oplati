@@ -17,10 +17,8 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me-in-production"
 
 DEBUG = env.bool("DEBUG", default=False)
 
-# === ИСПРАВЛЕНО: жёстко прописанные домены + чтение из переменной ===
 ALLOWED_HOSTS = [
-    "test-octal-encoder.com",
-    "test-octal.encoder.com",
+    "test-opt1i.onrender.com",
     "*.onrender.com",
     "localhost",
     "127.0.0.1",
