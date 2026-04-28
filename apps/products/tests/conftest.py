@@ -12,8 +12,8 @@ import pytest
 def _configure_stripe_keys_and_site(settings: Any) -> None:
     settings.STRIPE_PUBLISHABLE_KEY = "pk_test_rub"
     settings.STRIPE_SECRET_KEY = "sk_test_rub"
-    settings.STRIPE_PUBLISHABLE_KEY_USD = "pk_test_usd"
-    settings.STRIPE_SECRET_KEY_USD = "sk_test_usd"
+    settings.STRIPE_PUBLISHABLE_KEY_EUR = "pk_test_eur"
+    settings.STRIPE_SECRET_KEY_EUR = "sk_test_eur"
     settings.SITE_URL = "http://testserver"
 
 
@@ -30,14 +30,14 @@ def rub_item(db: Any) -> Any:
 
 
 @pytest.fixture
-def usd_item(db: Any) -> Any:
+def eur_item(db: Any) -> Any:
     from apps.products.models import Currency, Item
 
     return Item.objects.create(
-        name="Test USD",
+        name="Test EUR",
         description="desc",
         price=999,
-        currency=Currency.USD,
+        currency=Currency.EUR,
     )
 
 

@@ -21,7 +21,7 @@ def _mask_secret_suffix(secret: str) -> str:
 
 
 def _stripe_currency_code(currency: str) -> str:
-    """Stripe expects lowercase ISO 4217 code (usd, rub)."""
+    """Stripe expects lowercase ISO 4217 code (eur, rub)."""
     return currency.strip().upper()[:3].lower()
 
 
@@ -29,25 +29,25 @@ def _unit_amount_for_stripe_item(item: Item) -> int:
     """
     Amount in smallest currency unit sent to Stripe.
 
-    Stripe USD charges require at least 50 cents. If ``price`` looks like whole dollars
-    (integer < 50), we assume admin entered dollars and convert to cents (*100).
-    Otherwise ``price`` is treated as already in cents.
+    Stripe EUR charges require at least 50 euro cents. If ``price`` looks like whole euros
+    (integer < 50), we assume admin entered euros and convert to cents (*100).
+    Otherwise ``price`` is treated as already in euro cents.
     """
     cur_code = _stripe_currency_code(item.currency)
     amount = int(item.price)
-    if cur_code == "usd":
+    if cur_code == "eur":
         if amount < 50:
-            dollars = amount
-            amount = dollars * 100
+            euros = amount
+            amount = euros * 100
             logger.info(
-                "USD item_pk=%s: price=%s treated as whole dollars → %s cents",
+                "EUR item_pk=%s: price=%s treated as whole euros → %s cents",
                 item.pk,
-                dollars,
+                euros,
                 amount,
             )
         if amount < 50:
             logger.warning(
-                "USD unit_amount=%s still below 50 cents (Stripe minimum) item_pk=%s",
+                "EUR unit_amount=%s still below 50 cents (Stripe minimum) item_pk=%s",
                 amount,
                 item.pk,
             )
@@ -56,10 +56,10 @@ def _unit_amount_for_stripe_item(item: Item) -> int:
 
 def get_secret_key_for_currency(currency: str) -> str:
     cur = currency.upper()
-    if cur == Currency.USD:
-        key = settings.STRIPE_SECRET_KEY_USD
+    if cur == Currency.EUR:
+        key = settings.STRIPE_SECRET_KEY_EUR
         if not key:
-            raise RuntimeError("STRIPE_SECRET_KEY_USD is not configured")
+            raise RuntimeError("STRIPE_SECRET_KEY_EUR is not configured")
         return key
     key = settings.STRIPE_SECRET_KEY
     if not key:
@@ -69,10 +69,10 @@ def get_secret_key_for_currency(currency: str) -> str:
 
 def get_publishable_key_for_currency(currency: str) -> str:
     cur = currency.upper()
-    if cur == Currency.USD:
-        pk = settings.STRIPE_PUBLISHABLE_KEY_USD
+    if cur == Currency.EUR:
+        pk = settings.STRIPE_PUBLISHABLE_KEY_EUR
         if not pk:
-            raise RuntimeError("STRIPE_PUBLISHABLE_KEY_USD is not configured")
+            raise RuntimeError("STRIPE_PUBLISHABLE_KEY_EUR is not configured")
         return pk
     pk = settings.STRIPE_PUBLISHABLE_KEY
     if not pk:

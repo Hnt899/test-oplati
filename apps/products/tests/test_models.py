@@ -14,13 +14,13 @@ def test_create_item() -> None:
         name="Widget",
         description="A widget",
         price=12345,
-        currency=Currency.USD,
+        currency=Currency.EUR,
     )
     assert item.pk is not None
     assert item.name == "Widget"
     assert item.description == "A widget"
     assert item.price == 12345
-    assert item.currency == Currency.USD
+    assert item.currency == Currency.EUR
 
 
 @pytest.mark.django_db
@@ -79,9 +79,9 @@ def test_order_with_tax(ten_percent_tax: Tax) -> None:
 @pytest.mark.django_db
 def test_order_currency_mismatch() -> None:
     rub = Item.objects.create(name="R", description="", price=100, currency=Currency.RUB)
-    usd = Item.objects.create(name="U", description="", price=100, currency=Currency.USD)
+    eur = Item.objects.create(name="U", description="", price=100, currency=Currency.EUR)
     order = Order.objects.create()
     OrderItem.objects.create(order=order, item=rub, quantity=1)
-    OrderItem.objects.create(order=order, item=usd, quantity=1)
+    OrderItem.objects.create(order=order, item=eur, quantity=1)
     with pytest.raises(ValidationError):
         order.full_clean()

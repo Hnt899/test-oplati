@@ -41,8 +41,8 @@ jobs:
       SITE_URL: http://localhost:8000
       STRIPE_PUBLISHABLE_KEY: pk_test_ci
       STRIPE_SECRET_KEY: sk_test_ci
-      STRIPE_PUBLISHABLE_KEY_USD: pk_test_ci_usd
-      STRIPE_SECRET_KEY_USD: sk_test_ci_usd
+      STRIPE_PUBLISHABLE_KEY_EUR: pk_test_ci_eur
+      STRIPE_SECRET_KEY_EUR: sk_test_ci_eur
 
     steps:
       - uses: actions/checkout@v4

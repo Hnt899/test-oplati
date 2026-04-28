@@ -19,34 +19,34 @@ from apps.products.services import (
 
 
 @pytest.mark.django_db
-def test_usd_price_below_50_interpreted_as_whole_dollars(settings: object) -> None:
-    settings.STRIPE_SECRET_KEY_USD = "sk_test_usd"
+def test_eur_price_below_50_interpreted_as_whole_euros(settings: object) -> None:
+    settings.STRIPE_SECRET_KEY_EUR = "sk_test_eur"
     settings.SITE_URL = "http://testserver"
     item = Item.objects.create(
-        name="USD dozen dollars stored as 12",
+        name="EUR dozen euros stored as 12",
         description="",
         price=12,
-        currency=Currency.USD,
+        currency=Currency.EUR,
     )
-    fake = SimpleNamespace(id="cs_usd_1")
+    fake = SimpleNamespace(id="cs_eur_1")
     with patch("stripe.checkout.Session.create", return_value=fake) as m:
         create_checkout_session_for_item(item)
     pd = m.call_args.kwargs["line_items"][0]["price_data"]
-    assert pd["currency"] == "usd"
+    assert pd["currency"] == "eur"
     assert pd["unit_amount"] == 1200
 
 
 @pytest.mark.django_db
-def test_usd_price_already_cents_not_scaled(settings: object) -> None:
-    settings.STRIPE_SECRET_KEY_USD = "sk_test_usd"
+def test_eur_price_already_cents_not_scaled(settings: object) -> None:
+    settings.STRIPE_SECRET_KEY_EUR = "sk_test_eur"
     settings.SITE_URL = "http://testserver"
     item = Item.objects.create(
-        name="USD cents",
+        name="EUR cents",
         description="",
         price=999,
-        currency=Currency.USD,
+        currency=Currency.EUR,
     )
-    fake = SimpleNamespace(id="cs_usd_2")
+    fake = SimpleNamespace(id="cs_eur_2")
     with patch("stripe.checkout.Session.create", return_value=fake) as m:
         create_checkout_session_for_item(item)
     pd = m.call_args.kwargs["line_items"][0]["price_data"]
@@ -55,13 +55,13 @@ def test_usd_price_already_cents_not_scaled(settings: object) -> None:
 
 def test_get_secret_and_publishable_keys(settings: object) -> None:
     settings.STRIPE_SECRET_KEY = "sk_rub"
-    settings.STRIPE_SECRET_KEY_USD = "sk_usd"
+    settings.STRIPE_SECRET_KEY_EUR = "sk_eur"
     settings.STRIPE_PUBLISHABLE_KEY = "pk_rub"
-    settings.STRIPE_PUBLISHABLE_KEY_USD = "pk_usd"
+    settings.STRIPE_PUBLISHABLE_KEY_EUR = "pk_eur"
     assert get_secret_key_for_currency("RUB") == "sk_rub"
-    assert get_secret_key_for_currency("USD") == "sk_usd"
+    assert get_secret_key_for_currency("EUR") == "sk_eur"
     assert get_publishable_key_for_currency("rub") == "pk_rub"
-    assert get_publishable_key_for_currency("USD") == "pk_usd"
+    assert get_publishable_key_for_currency("EUR") == "pk_eur"
 
 
 @pytest.mark.django_db

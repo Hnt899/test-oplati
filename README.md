@@ -1,6 +1,6 @@
 # test-oplati
 
-Django backend for selling catalog items through **Stripe Checkout** and **Payment Intents**, with multi-currency Stripe accounts (RUB / USD), orders composed of multiple line items, discounts, taxes, Docker tooling, pytest coverage, and GitHub Actions CI.
+Django backend for selling catalog items through **Stripe Checkout** and **Payment Intents**, with multi-currency Stripe accounts (RUB / EUR), orders composed of multiple line items, discounts, taxes, Docker tooling, pytest coverage, and GitHub Actions CI.
 
 ## Features
 
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Edit `.env`: set `SECRET_KEY`, both Stripe **publishable/secret** pairs (`STRIPE_*` for RUB account, `STRIPE_*_USD` for USD account). Leave `DATABASE_URL` unset to use SQLite (`db.sqlite3`).
+Edit `.env`: set `SECRET_KEY`, both Stripe **publishable/secret** pairs (`STRIPE_*` for RUB account, `STRIPE_*_EUR` for EUR account). Leave `DATABASE_URL` unset to use SQLite (`db.sqlite3`).
 
 ```powershell
 python manage.py migrate
@@ -79,7 +79,7 @@ mypy apps/products
    - `ALLOWED_HOSTS` including your Render hostname and `*.onrender.com` if applicable
    - `DATABASE_URL` from Render Postgres
    - `SITE_URL=https://<your-service>.onrender.com`
-   - All four Stripe keys (`STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY_USD`, `STRIPE_SECRET_KEY_USD`)
+   - All four Stripe keys (`STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY_EUR`, `STRIPE_SECRET_KEY_EUR`)
 
 Never commit real secrets; use Render **environment groups** or **secret files**.
 

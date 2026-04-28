@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class Currency(models.TextChoices):
-    USD = "USD", "USD"
+    EUR = "EUR", "EUR"
     RUB = "RUB", "RUB"
 
 
 class Item(models.Model):
-    """Sellable product; price is in smallest currency unit (cents/kopecks)."""
+    """Sellable product; price is in smallest currency unit (kopecks or EUR cents)."""
 
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)

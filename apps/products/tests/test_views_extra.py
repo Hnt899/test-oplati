@@ -44,14 +44,14 @@ def test_create_order_missing_items_key(client: Client) -> None:
 @pytest.mark.django_db
 def test_create_order_mixed_currency_items(client: Client) -> None:
     rub = Item.objects.create(name="R", description="", price=100, currency=Currency.RUB)
-    usd = Item.objects.create(name="U", description="", price=100, currency=Currency.USD)
+    eur = Item.objects.create(name="U", description="", price=100, currency=Currency.EUR)
     resp = client.post(
         "/create-order/",
         data=json.dumps(
             {
                 "items": [
                     {"id": rub.pk, "quantity": 1},
-                    {"id": usd.pk, "quantity": 1},
+                    {"id": eur.pk, "quantity": 1},
                 ],
             },
         ),

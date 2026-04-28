@@ -19,9 +19,9 @@ def test_rub_item_uses_rub_keys(rub_item: object, client: Client) -> None:
 
 
 @pytest.mark.django_db
-def test_usd_item_uses_usd_keys(usd_item: object, client: Client) -> None:
-    fake = SimpleNamespace(id="cs_usd")
+def test_eur_item_uses_eur_keys(eur_item: object, client: Client) -> None:
+    fake = SimpleNamespace(id="cs_eur")
     with patch("stripe.checkout.Session.create", return_value=fake) as m:
-        client.get(f"/buy/{usd_item.pk}/")
+        client.get(f"/buy/{eur_item.pk}/")
     kwargs = m.call_args.kwargs
-    assert kwargs.get("api_key") == "sk_test_usd"
+    assert kwargs.get("api_key") == "sk_test_eur"

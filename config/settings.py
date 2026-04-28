@@ -107,9 +107,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 
-# Stripe (USD account)
-STRIPE_PUBLISHABLE_KEY_USD = env("STRIPE_PUBLISHABLE_KEY_USD", default="")
-STRIPE_SECRET_KEY_USD = env("STRIPE_SECRET_KEY_USD", default="")
+# Stripe (EUR account)
+STRIPE_PUBLISHABLE_KEY_EUR = env("STRIPE_PUBLISHABLE_KEY_EUR", default="")
+STRIPE_SECRET_KEY_EUR = env("STRIPE_SECRET_KEY_EUR", default="")
 
 # Absolute base URL for Stripe Checkout success/cancel redirects.
 # On Render set e.g. SITE_URL=https://test-oplati.onrender.com (no trailing slash required).

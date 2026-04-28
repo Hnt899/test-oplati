@@ -6,7 +6,7 @@ from apps.products.models import Currency, Discount, DiscountType, Item, Tax
 
 
 class Command(BaseCommand):
-    help = "Creates demo items (RUB and USD), a sample discount, and a sample tax."
+    help = "Creates demo items (RUB and EUR), a sample discount, and a sample tax."
 
     def handle(self, *args: object, **options: object) -> None:
         rub_items = [
@@ -14,12 +14,12 @@ class Command(BaseCommand):
             ("Sticker Pack RUB", "Vinyl stickers.", 450_00, Currency.RUB),
             ("T-Shirt RUB", "Soft cotton tee.", 2490_00, Currency.RUB),
         ]
-        usd_items = [
-            ("AI Credits USD", "Starter credit bundle.", 999, Currency.USD),
-            ("API Pass USD", "Monthly API access.", 2499, Currency.USD),
+        eur_items = [
+            ("AI Credits EUR", "Starter credit bundle.", 999, Currency.EUR),
+            ("API Pass EUR", "Monthly API access.", 2499, Currency.EUR),
         ]
 
-        for name, desc, price, cur in rub_items + usd_items:
+        for name, desc, price, cur in rub_items + eur_items:
             Item.objects.update_or_create(
                 name=name,
                 defaults={"description": desc, "price": price, "currency": cur},

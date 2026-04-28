@@ -12,4 +12,4 @@ from apps.products.models import Item
 def test_seed_data_command() -> None:
     call_command("seed_data")
     assert Item.objects.filter(currency="RUB").count() >= 3
-    assert Item.objects.filter(currency="USD").count() >= 2
+    assert Item.objects.filter(currency="EUR").count() >= 2
