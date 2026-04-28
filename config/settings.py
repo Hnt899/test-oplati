@@ -111,7 +111,8 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY_USD = env("STRIPE_PUBLISHABLE_KEY_USD", default="")
 STRIPE_SECRET_KEY_USD = env("STRIPE_SECRET_KEY_USD", default="")
 
-# Absolute URLs for Stripe redirects (Checkout)
+# Absolute base URL for Stripe Checkout success/cancel redirects.
+# On Render set e.g. SITE_URL=https://test-oplati.onrender.com (no trailing slash required).
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
 
 LOGGING = {

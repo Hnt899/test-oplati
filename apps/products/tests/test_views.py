@@ -11,6 +11,15 @@ from django.test import Client
 
 
 @pytest.mark.django_db
+def test_catalog_home_200(rub_item: object, client: Client) -> None:
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.content.decode()
+    assert rub_item.name in body
+    assert "Товары" in body or "Shop" in body
+
+
+@pytest.mark.django_db
 def test_get_item_page_200(rub_item: object, client: Client) -> None:
     resp = client.get(f"/item/{rub_item.pk}/")
     assert resp.status_code == 200

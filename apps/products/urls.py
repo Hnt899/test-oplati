@@ -5,6 +5,7 @@ from django.urls import path
 from apps.products import views
 
 urlpatterns = [
+    path("", views.item_list, name="item-list"),
     path("item/<int:pk>/", views.item_page, name="item-detail"),
     path("buy/<int:pk>/", views.buy, name="buy"),
     path("buy-intent/<int:pk>/", views.buy_intent, name="buy-intent"),

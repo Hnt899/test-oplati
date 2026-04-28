@@ -29,6 +29,17 @@ def _json_error(message: str, status: int = 400) -> JsonResponse:
 
 
 @require_GET
+def item_list(request: HttpRequest) -> HttpResponse:
+    """Catalog: all items with links to detail/checkout."""
+    items = Item.objects.all().order_by("pk")
+    return render(
+        request,
+        "products/item_list.html",
+        {"items": items},
+    )
+
+
+@require_GET
 def item_page(request: HttpRequest, pk: int) -> HttpResponse:
     try:
         item = Item.objects.get(pk=pk)

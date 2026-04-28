@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from urllib.parse import urljoin
 
 import stripe
 from django.conf import settings
@@ -12,6 +11,18 @@ from django.conf import settings
 from apps.products.models import Currency, DiscountType, Item, Order
 
 logger = logging.getLogger(__name__)
+
+
+def _mask_secret_suffix(secret: str) -> str:
+    """Last 8 chars of secret key for logs (never log full keys)."""
+    if not secret:
+        return "(empty)"
+    return f"...{secret[-8:]}" if len(secret) > 8 else "***"
+
+
+def _stripe_currency_code(currency: str) -> str:
+    """Stripe expects lowercase ISO 4217 code (usd, rub)."""
+    return currency.strip().upper()[:3].lower()
 
 
 def get_secret_key_for_currency(currency: str) -> str:
@@ -64,7 +75,7 @@ def ensure_stripe_coupon(discount: Any, currency: str) -> str | None:
     else:
         coupon = stripe.Coupon.create(
             amount_off=int(discount.value),
-            currency=currency.lower(),
+            currency=_stripe_currency_code(currency),
             duration="once",
             name=discount.name[:40],
             **opts,
@@ -92,39 +103,85 @@ def ensure_stripe_tax_rate(tax: Any, currency: str) -> str | None:
 
 
 def build_success_cancel_urls() -> tuple[str, str]:
-    base = settings.SITE_URL.rstrip("/") + "/"
-    success = urljoin(base, "checkout/success/")
-    cancel = urljoin(base, "checkout/cancel/")
+    """Absolute success/cancel URLs from ``settings.SITE_URL`` (Render / production safe)."""
+    base = settings.SITE_URL.rstrip("/")
+    success = f"{base}/checkout/success/"
+    cancel = f"{base}/checkout/cancel/"
+    logger.debug(
+        "Stripe checkout redirects: SITE_URL=%s success_url=%s cancel_url=%s",
+        settings.SITE_URL,
+        success,
+        cancel,
+    )
     return success, cancel
 
 
 def create_checkout_session_for_item(item: Item) -> stripe.checkout.Session:
     success_url, cancel_url = build_success_cancel_urls()
     opts = _stripe_request_options(item.currency)
-    session = stripe.checkout.Session.create(
-        mode="payment",
-        line_items=[
-            {
-                "price_data": {
-                    "currency": item.currency.lower(),
-                    "product_data": {"name": item.name, "description": item.description[:500]},
-                    "unit_amount": item.price,
-                },
-                "quantity": 1,
-            }
-        ],
-        success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url=cancel_url,
-        **opts,
+    cur_code = _stripe_currency_code(item.currency)
+    secret = opts.get("api_key", "")
+    logger.info(
+        "Checkout Session item_pk=%s stripe_cur=%s model_cur=%s key_suffix=%s",
+        item.pk,
+        cur_code,
+        item.currency,
+        _mask_secret_suffix(secret),
     )
-    logger.debug("Checkout Session created for item pk=%s session=%s", item.pk, session.id)
+    desc = (item.description or "")[:500]
+    if cur_code == "usd" and item.price < 50:
+        logger.warning(
+            "Stripe USD Checkout usually requires at least 50 (cents); unit_amount=%s item_pk=%s",
+            item.price,
+            item.pk,
+        )
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": cur_code,
+                        "product_data": {"name": item.name, "description": desc},
+                        "unit_amount": item.price,
+                    },
+                    "quantity": 1,
+                }
+            ],
+            success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=cancel_url,
+            **opts,
+        )
+    except stripe.error.StripeError as exc:
+        logger.exception(
+            "Stripe Checkout Session failed item_pk=%s cur=%s code=%s status=%s msg=%s",
+            item.pk,
+            item.currency,
+            cur_code,
+            getattr(exc, "http_status", None),
+            getattr(exc, "user_message", None) or str(exc),
+        )
+        raise
+    logger.info(
+        "Checkout Session created session_id=%s item_pk=%s currency=%s",
+        session.id,
+        item.pk,
+        cur_code,
+    )
     return session
 
 
 def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
     currency = order.assert_single_currency()
+    cur_code = _stripe_currency_code(currency)
     success_url, cancel_url = build_success_cancel_urls()
     opts = _stripe_request_options(currency)
+    logger.info(
+        "Creating Checkout Session for order_pk=%s stripe_currency=%s secret_suffix=%s",
+        order.pk,
+        cur_code,
+        _mask_secret_suffix(opts.get("api_key", "")),
+    )
 
     tax_rate_id: str | None = None
     if order.tax_id:
@@ -132,12 +189,13 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
 
     line_items: list[dict[str, Any]] = []
     for oi in order.order_items.select_related("item").all():
+        desc = (oi.item.description or "")[:500]
         li: dict[str, Any] = {
             "price_data": {
-                "currency": oi.item.currency.lower(),
+                "currency": _stripe_currency_code(oi.item.currency),
                 "product_data": {
                     "name": oi.item.name,
-                    "description": oi.item.description[:500],
+                    "description": desc,
                 },
                 "unit_amount": oi.item.price,
             },
@@ -160,20 +218,47 @@ def create_checkout_session_for_order(order: Order) -> stripe.checkout.Session:
         if cid:
             payload["discounts"] = [{"coupon": cid}]
 
-    session = stripe.checkout.Session.create(**payload)
-    logger.debug("Checkout Session created for order pk=%s session=%s", order.pk, session.id)
+    try:
+        session = stripe.checkout.Session.create(**payload)
+    except stripe.error.StripeError as exc:
+        logger.exception(
+            "Stripe Checkout Session order failed pk=%s cur=%s status=%s msg=%s",
+            order.pk,
+            currency,
+            getattr(exc, "http_status", None),
+            getattr(exc, "user_message", None) or str(exc),
+        )
+        raise
+    logger.info("Checkout Session created order_pk=%s session_id=%s", order.pk, session.id)
     return session
 
 
 def create_payment_intent_for_item(item: Item) -> stripe.PaymentIntent:
     opts = _stripe_request_options(item.currency)
-    intent = stripe.PaymentIntent.create(
-        amount=item.price,
-        currency=item.currency.lower(),
-        metadata={"item_id": str(item.pk)},
-        automatic_payment_methods={"enabled": True},
-        **opts,
+    cur_code = _stripe_currency_code(item.currency)
+    logger.info(
+        "Creating PaymentIntent item_pk=%s currency=%s secret_suffix=%s",
+        item.pk,
+        cur_code,
+        _mask_secret_suffix(opts.get("api_key", "")),
     )
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=item.price,
+            currency=cur_code,
+            metadata={"item_id": str(item.pk)},
+            automatic_payment_methods={"enabled": True},
+            **opts,
+        )
+    except stripe.error.StripeError as exc:
+        logger.exception(
+            "Stripe PaymentIntent failed item_pk=%s currency=%s http_status=%s stripe_msg=%s",
+            item.pk,
+            cur_code,
+            getattr(exc, "http_status", None),
+            getattr(exc, "user_message", None) or str(exc),
+        )
+        raise
     intent_id = getattr(intent, "id", "")
-    logger.debug("PaymentIntent created for item pk=%s intent=%s", item.pk, intent_id)
+    logger.info("PaymentIntent created item_pk=%s intent=%s", item.pk, intent_id)
     return intent
